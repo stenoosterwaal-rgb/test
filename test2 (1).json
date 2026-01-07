@@ -1,0 +1,257 @@
+{
+  "project": {
+    "id": "z89ac5",
+    "name": "test2",
+    "creationTs": 1767788550899,
+    "lastModifiedTs": 1767790291274,
+    "userSetData": {
+      "description": "",
+      "tags": [],
+      "contactURL": "",
+      "tutorialYouTube": ""
+    }
+  },
+  "graph": {
+    "nodes": [
+      {
+        "id": "classification_visualizer_3mmut2",
+        "nodeSpecId": "classification_visualizer",
+        "customData": {
+          "initialWidth": 240,
+          "initialHeight": 320,
+          "previewX": 608,
+          "previewY": 16,
+          "previewWidth": 240,
+          "previewHeight": 320
+        },
+        "uiData": {
+          "posX": 757.35888671875,
+          "posY": 222.25,
+          "width": 191.76171875,
+          "height": 105,
+          "selected": false
+        },
+        "propValues": {
+          "hidePreview": false
+        },
+        "incomingEdges": {
+          "result": [
+            {
+              "sourceNodeId": "gesture_recognition_wv0l64",
+              "outputId": "classificationResult"
+            }
+          ]
+        }
+      },
+      {
+        "id": "live_camera_yvzk4u",
+        "nodeSpecId": "live_camera",
+        "customData": {
+          "runContinuously": true,
+          "initialWidth": 240,
+          "initialHeight": 320,
+          "previewX": 16,
+          "previewY": 16,
+          "previewWidth": 240,
+          "previewHeight": 320
+        },
+        "uiData": {
+          "posX": 16,
+          "posY": 44.25,
+          "width": 176,
+          "height": 105,
+          "selected": false
+        },
+        "propValues": {
+          "hidePreview": false
+        }
+      },
+      {
+        "id": "mask_visualizer_i3izgd",
+        "nodeSpecId": "mask_visualizer",
+        "customData": {
+          "previewX": 272,
+          "previewY": 16,
+          "previewWidth": 320,
+          "previewHeight": 240
+        },
+        "uiData": {
+          "posX": 765.23974609375,
+          "posY": 7.25,
+          "width": 176,
+          "height": 179,
+          "selected": false
+        },
+        "propValues": {
+          "mode": "fg-image",
+          "hidePreview": false
+        },
+        "inputValues": {
+          "color": "#22e8dd"
+        },
+        "incomingEdges": {
+          "image": [
+            {
+              "sourceNodeId": "live_camera_yvzk4u",
+              "outputId": "image"
+            }
+          ],
+          "segmentationResult": [
+            {
+              "sourceNodeId": "body_segmentation_hafcmi",
+              "outputId": "segmentationResult"
+            }
+          ]
+        }
+      },
+      {
+        "id": "gesture_recognition_wv0l64",
+        "nodeSpecId": "gesture_recognition",
+        "customData": {
+          "previewX": 272,
+          "previewY": 16,
+          "previewWidth": 320,
+          "previewHeight": 240
+        },
+        "uiData": {
+          "posX": 368,
+          "posY": 227.75,
+          "width": 229.35888671875,
+          "height": 94,
+          "selected": false
+        },
+        "incomingEdges": {
+          "image": [
+            {
+              "sourceNodeId": "live_camera_yvzk4u",
+              "outputId": "image"
+            }
+          ]
+        }
+      },
+      {
+        "id": "body_segmentation_hafcmi",
+        "nodeSpecId": "body_segmentation",
+        "customData": {
+          "previewX": 272,
+          "previewY": 16,
+          "previewWidth": 320,
+          "previewHeight": 240
+        },
+        "uiData": {
+          "posX": 390.03271484375,
+          "posY": 0,
+          "width": 185.29345703125,
+          "height": 105,
+          "selected": false
+        },
+        "propValues": {
+          "modelOption": "MediaPipeSelfieSegmentation"
+        },
+        "incomingEdges": {
+          "image": [
+            {
+              "sourceNodeId": "live_camera_yvzk4u",
+              "outputId": "image"
+            }
+          ]
+        }
+      },
+      {
+        "id": "shader_processing_h4pw19",
+        "nodeSpecId": "shader_processing",
+        "customData": {
+          "initialWidth": 240,
+          "initialHeight": 320,
+          "runContinuously": true,
+          "previewX": 272,
+          "previewY": 272,
+          "previewWidth": 240,
+          "previewHeight": 320
+        },
+        "uiData": {
+          "posX": 0,
+          "posY": 326.25,
+          "width": 208,
+          "height": 229,
+          "selected": false
+        },
+        "propValues": {
+          "hidePreview": false
+        },
+        "inputValues": {
+          "shader": "vfx-mirror"
+        },
+        "incomingEdges": {
+          "channel0": [
+            {
+              "sourceNodeId": "live_camera_yvzk4u",
+              "outputId": "image"
+            }
+          ]
+        }
+      },
+      {
+        "id": "code_editor_gfb5k4",
+        "nodeSpecId": "code_editor",
+        "customData": {
+          "initialWidth": 304,
+          "initialHeight": 368,
+          "previewX": 864,
+          "previewY": 16,
+          "previewWidth": 304,
+          "previewHeight": 368
+        },
+        "uiData": {
+          "posX": -272,
+          "posY": 384,
+          "width": 176,
+          "height": 105,
+          "selected": false
+        },
+        "propValues": {
+          "curCode": "def main(inputs):\n    gebaar = inputs[0]\n    \n    # We wijzen elk gebaar een nummer toe\n    mapping = {\n        \"None\": 0.0,\n        \"Open_Palm\": 1.0,\n        \"Closed_Fist\": 2.0,\n        \"Victory\": 3.0,\n        \"Thumb_Up\": 4.0,\n        \"Thumb_Down\": 5.0\n    }\n    \n    # Zoek het nummer op, als het gebaar onbekend is stuur 0.0\n    keuze = mapping.get(gebaar, 0.0)\n    return keuze",
+          "hidePreview": false
+        },
+        "inputValues": {
+          "initialCode": ""
+        }
+      },
+      {
+        "id": "html_viewer_qj4o09",
+        "nodeSpecId": "html_viewer",
+        "customData": {
+          "previewX": 528,
+          "previewY": 352,
+          "previewWidth": 320,
+          "previewHeight": 240
+        },
+        "uiData": {
+          "posX": 384,
+          "posY": 400,
+          "width": 250,
+          "height": 130,
+          "selected": true
+        },
+        "propValues": {
+          "hidePreview": false,
+          "hidePreviewFrame": false
+        },
+        "inputValues": {
+          "html": ""
+        },
+        "incomingEdges": {
+          "html": [
+            {
+              "sourceNodeId": "code_editor_gfb5k4",
+              "outputId": "code"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "customNodeUrls": [
+    "https://storage.googleapis.com/tfweb/visualblocks-github-bundles/@visualblocks/gemini@latest/dist/bundle.js"
+  ]
+}
