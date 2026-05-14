@@ -1,6 +1,12 @@
-# ASI-Evolve — Getting Started on Your Android Phone
+# Clothing Finder — Getting Started on Your Android Phone
 
-This guide gets you from zero to running ASI-Evolve on your Android browser in about 15 minutes. **Everything is free.**
+Upload a photo or screenshot of a clothing item, and the app uses a vision AI
+to identify the brand/type/colour and then helps you find that exact item on
+**Vinted** and on the original seller's site (via Google Lens and Google
+Shopping).
+
+This guide gets you from zero to running on your Android browser in about
+15 minutes. **Everything is free.**
 
 ---
 
@@ -20,7 +26,7 @@ This guide gets you from zero to running ASI-Evolve on your Android browser in a
 2. Tap **Sign up** and create an account (email + password)
 3. Verify your email
 4. Once logged in, tap **API Keys** in the left menu
-5. Tap **Create API Key** → give it a name (e.g. "asi-evolve") → **Submit**
+5. Tap **Create API Key** → give it a name (e.g. "clothing-finder") → **Submit**
 6. **Copy the key** — it starts with `gsk_...`
    > Keep this key private. Never share it publicly.
 
@@ -40,7 +46,7 @@ This guide gets you from zero to running ASI-Evolve on your Android browser in a
 2. Tap **Deploy from GitHub repo**
 3. Select **stenoosterwaal-rgb/test**
 4. Railway will auto-detect the `Dockerfile` and start building
-   > The first build takes about 3–5 minutes (it installs AI models)
+   > The first build takes about 1–2 minutes.
 
 ---
 
@@ -66,24 +72,35 @@ This guide gets you from zero to running ASI-Evolve on your Android browser in a
 
 ---
 
-## Step 6 — Run your first experiment
+## Step 6 — Find a piece of clothing
 
-1. Use the slider to choose how many evolution steps to run (10 is a good start)
-2. Tap **▶ Start Demo**
-3. Watch the live log — the AI is designing, testing, and improving circle-packing algorithms
-4. After all steps complete, the **Best Result** panel shows the score and the winning code
+1. Tap the upload area and either **choose a photo** from your gallery or
+   **take a new one** with your camera.
+2. Tap **Find this item**.
+3. After a few seconds you get:
+   - **Detected item** — brand guess, item type, colour, distinctive
+     features, and a confidence badge.
+   - **Find this item** — buttons to search **Vinted**, **Google Lens**
+     (reverse image search, best for finding the exact original listing),
+     and **Google Shopping**.
+   - **Top Vinted matches** — when Vinted is reachable, a small grid of
+     listings appears inline.
 
-> **What is the demo doing?**
-> It tries to pack 26 circles into a 1×1 square to maximise their total radius.
-> The world record (AlphaEvolve, 2025) is **2.635**. ASI-Evolve tries to beat it.
+> **What's happening behind the scenes?**
+> The image is sent to a free Groq vision model (Llama 4 Scout) which
+> extracts a structured description. The app then builds smart search
+> URLs and tries to pull a few Vinted listings directly.
 
 ---
 
 ## Tips
 
-- **Runs are saved** — if you stop and restart, it picks up where it left off
-- **More steps = better results** — try 30–50 steps for serious improvement
-- **Cost** — Groq is **completely free** on the free tier. No credit card needed.
+- **Google Lens** is usually the strongest link for finding the *exact*
+  product page on the original seller's site — open it first.
+- **Vinted** searches work best when the brand is detected. Edit the
+  search on Vinted if the auto-generated query is too narrow.
+- **Cost** — Groq is **completely free** on the free tier. No credit
+  card needed.
 
 ---
 
@@ -92,6 +109,7 @@ This guide gets you from zero to running ASI-Evolve on your Android browser in a
 | Problem | Fix |
 |---|---|
 | Red "No API key" dot | Add `GROQ_API_KEY` in Railway Variables |
-| "A run is already in progress" | Tap **■ Stop**, wait a moment, then start again |
+| "Vision model failed" | Re-try; if persistent, your Groq key may be invalid |
+| No Vinted thumbnails | Vinted may be blocking the server — the search-link buttons still work |
 | App not loading | Check Railway → Deployments for build errors |
-| Build fails | Make sure you're deploying from the `claude/new-session-IdFse` branch |
+| "Image is larger than 8 MB" | Take a smaller photo or compress before uploading |
