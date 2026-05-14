@@ -68,6 +68,22 @@
         </div>
       </div>
 
+      <!-- Custom task prompt -->
+      <div>
+        <button type="button"
+          class="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-200 transition-colors"
+          onclick="togglePrompt()">
+          <span id="prompt-arrow">▶</span>
+          <span>Custom task prompt (optional)</span>
+        </button>
+        <div id="prompt-box" class="hidden mt-2">
+          <textarea id="task-prompt" rows="8"
+            class="w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-xs text-gray-200 font-mono resize-y focus:outline-none focus:border-indigo-500"
+            placeholder="Leave empty to use the default circle-packing demo prompt…"></textarea>
+          <p class="text-xs text-gray-600 mt-1">Tip: describe any algorithmic problem. The AI will write, test, and improve code for it.</p>
+        </div>
+      </div>
+
       <!-- Steps slider -->
       <div>
         <label class="text-xs text-gray-400" for="steps-slider">
@@ -204,14 +220,22 @@
     }
 
     // ── Run control ────────────────────────────────────────────────────────
+    function togglePrompt() {
+      const box = document.getElementById('prompt-box');
+      const arrow = document.getElementById('prompt-arrow');
+      const hidden = box.classList.toggle('hidden');
+      arrow.textContent = hidden ? '▶' : '▼';
+    }
+
     async function startRun() {
       hideMsg();
       const steps = parseInt(document.getElementById('steps-slider').value);
+      const task_description = document.getElementById('task-prompt').value.trim();
 
       const r = await fetch('/api/run/start', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({steps}),
+        body: JSON.stringify({steps, task_description}),
       });
       const d = await r.json();
 

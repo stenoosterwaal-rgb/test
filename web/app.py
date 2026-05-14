@@ -12,9 +12,26 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-# Ensure repo root is on the path
+# Ensure repo root is on the path and bootstrap the Evolve package
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
+
+import importlib.util as _ilu
+
+def _bootstrap_evolve():
+    """Register the repo root as the importable `Evolve` package."""
+    if "Evolve" in sys.modules:
+        return
+    spec = _ilu.spec_from_file_location(
+        "Evolve",
+        ROOT / "__init__.py",
+        submodule_search_locations=[str(ROOT)],
+    )
+    module = _ilu.module_from_spec(spec)
+    sys.modules["Evolve"] = module
+    spec.loader.exec_module(module)
+
+_bootstrap_evolve()
 
 app = FastAPI(title="ASI-Evolve")
 
@@ -77,7 +94,7 @@ def _push_log(level: str, message: str):
         asyncio.run_coroutine_threadsafe(run_state.log_queue.put(line), loop)
 
 
-def _run_pipeline(steps: int):
+def _run_pipeline(steps: int, task_description: str = ""):
     """Executed in a background thread — runs the ASI-Evolve pipeline."""
     root_logger = logging.getLogger()
     root_logger.addHandler(_ws_handler)
@@ -90,14 +107,15 @@ def _run_pipeline(steps: int):
         _push_log("INFO", f"Experiment: circle_packing_demo | Steps: {steps}")
 
         # Import here so startup is fast
-        from pipeline.main import Pipeline
+        from Evolve.pipeline.main import Pipeline
 
         config_path = str(ROOT / "web_config.yaml")
         pipeline = Pipeline(config_path=config_path, experiment_name="circle_packing_demo")
 
-        # Read task description once
-        input_file = ROOT / "experiments" / "circle_packing_demo" / "input.md"
-        task_description = input_file.read_text(encoding="utf-8") if input_file.exists() else ""
+        # Use provided task description, fall back to input.md
+        if not task_description:
+            input_file = ROOT / "experiments" / "circle_packing_demo" / "input.md"
+            task_description = input_file.read_text(encoding="utf-8") if input_file.exists() else ""
 
         # Evaluate initial program seed (if not already done)
         if not pipeline.is_resume and not pipeline.initial_node_created:
@@ -178,6 +196,7 @@ async def start_run(payload: Optional[Dict[str, Any]] = None):
         )
 
     steps = (payload or {}).get("steps", 10)
+    task_description = (payload or {}).get("task_description", "")
     run_state.reset()
     run_state.running = True
 
@@ -196,7 +215,7 @@ async def start_run(payload: Optional[Dict[str, Any]] = None):
         except Exception as e:
             _push_log("WARNING", f"Cognition seeding failed (will continue): {e}")
 
-    run_state.thread = threading.Thread(target=_run_pipeline, args=(steps,), daemon=True)
+    run_state.thread = threading.Thread(target=_run_pipeline, args=(steps, task_description), daemon=True)
     run_state.thread.start()
 
     return {"status": "started", "steps": steps}
