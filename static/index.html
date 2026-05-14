@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Clothing Finder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    .dropzone.dragover { background-color: rgba(99,102,241,0.12); border-color: rgb(129,140,248); }
+    .spinner { border-top-color: transparent; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+  <div class="max-w-3xl mx-auto px-4 py-6 sm:py-10">
+    <header class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Clothing Finder</h1>
+        <p class="text-sm text-gray-400 mt-1">Upload a photo. We'll find it on Vinted and the web.</p>
+      </div>
+      <div id="apiStatus" class="flex items-center gap-2 text-xs text-gray-400">
+        <span id="apiDot" class="inline-block w-2.5 h-2.5 rounded-full bg-gray-500"></span>
+        <span id="apiLabel">checking…</span>
+      </div>
+    </header>
+
+    <section id="uploadSection" class="space-y-4">
+      <label id="dropzone" for="fileInput"
+             class="dropzone cursor-pointer flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-700 rounded-2xl p-8 sm:p-12 bg-gray-900/50 hover:bg-gray-900 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M3 16.5V19a2 2 0 002 2h14a2 2 0 002-2v-2.5M16 7l-4-4m0 0L8 7m4-4v12" />
+        </svg>
+        <div class="text-center">
+          <p class="font-medium">Tap to upload or drop an image</p>
+          <p class="text-xs text-gray-500 mt-1">JPG / PNG / WebP · max 8 MB</p>
+        </div>
+        <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden" />
+      </label>
+
+      <div id="preview" class="hidden">
+        <div class="flex items-start gap-4 bg-gray-900/60 rounded-2xl p-4 border border-gray-800">
+          <img id="previewImg" class="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border border-gray-800" />
+          <div class="flex-1 min-w-0">
+            <p id="previewName" class="font-medium truncate"></p>
+            <p id="previewSize" class="text-xs text-gray-500"></p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button id="analyzeBtn"
+                      class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2 rounded-lg transition">
+                <span id="analyzeSpinner" class="hidden w-4 h-4 rounded-full border-2 border-white spinner"></span>
+                <span id="analyzeLabel">Find this item</span>
+              </button>
+              <button id="clearBtn"
+                      class="text-sm text-gray-400 hover:text-gray-200 px-3 py-2 rounded-lg transition">
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="errorBox" class="hidden bg-red-950/60 border border-red-800 text-red-200 text-sm px-4 py-3 rounded-lg"></div>
+    </section>
+
+    <section id="results" class="hidden mt-10 space-y-6"></section>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let selectedFile = null;
+
+    async function refreshStatus() {
+      try {
+        const r = await fetch('/api/status');
+        const data = await r.json();
+        if (data.has_api_key) {
+          $('apiDot').className = 'inline-block w-2.5 h-2.5 rounded-full bg-emerald-500';
+          $('apiLabel').textContent = 'Groq key set';
+        } else {
+          $('apiDot').className = 'inline-block w-2.5 h-2.5 rounded-full bg-red-500';
+          $('apiLabel').textContent = 'No API key';
+        }
+      } catch {
+        $('apiDot').className = 'inline-block w-2.5 h-2.5 rounded-full bg-red-500';
+        $('apiLabel').textContent = 'offline';
+      }
+    }
+
+    function showError(msg) {
+      const box = $('errorBox');
+      box.textContent = msg;
+      box.classList.remove('hidden');
+    }
+    function clearError() { $('errorBox').classList.add('hidden'); }
+
+    function setFile(file) {
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        showError('Please choose an image file.');
+        return;
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        showError('Image is larger than 8 MB.');
+        return;
+      }
+      clearError();
+      selectedFile = file;
+      $('previewImg').src = URL.createObjectURL(file);
+      $('previewName').textContent = file.name;
+      $('previewSize').textContent = (file.size / 1024).toFixed(0) + ' KB · ' + file.type;
+      $('preview').classList.remove('hidden');
+      $('analyzeBtn').disabled = false;
+    }
+
+    $('fileInput').addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (f) setFile(f);
+    });
+
+    const dz = $('dropzone');
+    ['dragenter', 'dragover'].forEach(ev =>
+      dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(ev =>
+      dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
+    dz.addEventListener('drop', e => {
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) setFile(f);
+    });
+
+    $('clearBtn').addEventListener('click', () => {
+      selectedFile = null;
+      $('preview').classList.add('hidden');
+      $('results').classList.add('hidden');
+      $('results').innerHTML = '';
+      $('fileInput').value = '';
+      clearError();
+    });
+
+    $('analyzeBtn').addEventListener('click', async () => {
+      if (!selectedFile) return;
+      clearError();
+      $('results').classList.add('hidden');
+      $('results').innerHTML = '';
+      $('analyzeBtn').disabled = true;
+      $('analyzeSpinner').classList.remove('hidden');
+      $('analyzeLabel').textContent = 'Analysing…';
+
+      try {
+        const fd = new FormData();
+        fd.append('image', selectedFile);
+        const r = await fetch('/api/analyze', { method: 'POST', body: fd });
+        if (!r.ok) {
+          let detail = 'Request failed (' + r.status + ').';
+          try { const j = await r.json(); if (j.detail) detail = j.detail; } catch {}
+          throw new Error(detail);
+        }
+        const data = await r.json();
+        renderResults(data);
+      } catch (err) {
+        showError(err.message || String(err));
+      } finally {
+        $('analyzeBtn').disabled = false;
+        $('analyzeSpinner').classList.add('hidden');
+        $('analyzeLabel').textContent = 'Find this item';
+      }
+    });
+
+    function chip(text, tone) {
+      const colours = {
+        gray:    'bg-gray-800 text-gray-200 border-gray-700',
+        indigo:  'bg-indigo-950 text-indigo-200 border-indigo-800',
+        emerald: 'bg-emerald-950 text-emerald-200 border-emerald-800',
+        amber:   'bg-amber-950 text-amber-200 border-amber-800',
+        red:     'bg-red-950 text-red-200 border-red-800',
+      };
+      const cls = colours[tone] || colours.gray;
+      return '<span class="inline-block text-xs px-2 py-1 rounded-full border ' + cls + '">' + escapeHtml(text) + '</span>';
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function linkButton(href, label, sub) {
+      if (!href) return '';
+      return (
+        '<a href="' + escapeHtml(href) + '" target="_blank" rel="noopener noreferrer" ' +
+        'class="block bg-gray-900/70 hover:bg-gray-900 border border-gray-800 hover:border-indigo-700 rounded-xl px-4 py-3 transition">' +
+          '<div class="flex items-center justify-between gap-3">' +
+            '<div class="min-w-0">' +
+              '<p class="font-medium text-sm">' + escapeHtml(label) + '</p>' +
+              (sub ? '<p class="text-xs text-gray-500 mt-0.5 truncate">' + escapeHtml(sub) + '</p>' : '') +
+            '</div>' +
+            '<svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>' +
+            '</svg>' +
+          '</div>' +
+        '</a>'
+      );
+    }
+
+    function renderResults(data) {
+      const d = data.description || {};
+      const links = data.links || {};
+      const items = data.vinted_items || [];
+
+      const confTone = { high: 'emerald', medium: 'amber', low: 'red' }[(d.confidence || '').toLowerCase()] || 'gray';
+
+      const chips = [];
+      if (d.brand_guess) chips.push(chip(d.brand_guess, 'indigo'));
+      if (d.item_type) chips.push(chip(d.item_type, 'gray'));
+      if (d.colour) chips.push(chip(d.colour, 'gray'));
+      if (d.pattern) chips.push(chip(d.pattern, 'gray'));
+      if (d.material_guess) chips.push(chip(d.material_guess, 'gray'));
+      (d.distinctive_features || []).forEach(f => chips.push(chip(f, 'gray')));
+      chips.push(chip('confidence: ' + (d.confidence || 'low'), confTone));
+
+      const buttons = [
+        linkButton(links.vinted,          'Search on Vinted',         d.search_query || ''),
+        linkButton(links.google_lens,     'Reverse image search (Google Lens)', 'Find the exact item from the photo'),
+        linkButton(links.google_shopping, 'Find on Google Shopping',  d.search_query || ''),
+        linkButton(links.google_images,   'Google Images',            d.search_query || ''),
+        linkButton(links.brand_site,      'Search the brand site',    d.brand_guess || ''),
+      ].filter(Boolean).join('');
+
+      let inlineVinted = '';
+      if (items.length) {
+        const cards = items.map(it => (
+          '<a href="' + escapeHtml(it.url) + '" target="_blank" rel="noopener noreferrer" ' +
+          'class="block bg-gray-900/70 hover:bg-gray-900 border border-gray-800 hover:border-indigo-700 rounded-xl overflow-hidden transition">' +
+            (it.thumbnail
+              ? '<img src="' + escapeHtml(it.thumbnail) + '" alt="" class="w-full aspect-square object-cover" loading="lazy">'
+              : '<div class="w-full aspect-square bg-gray-800"></div>') +
+            '<div class="p-2">' +
+              '<p class="text-xs font-medium truncate">' + escapeHtml(it.title) + '</p>' +
+              '<p class="text-xs text-gray-500 truncate">' + escapeHtml(it.price || '') +
+                (it.size ? ' · ' + escapeHtml(it.size) : '') + '</p>' +
+            '</div>' +
+          '</a>'
+        )).join('');
+        inlineVinted =
+          '<div>' +
+            '<h2 class="text-lg font-semibold mb-3">Top Vinted matches</h2>' +
+            '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">' + cards + '</div>' +
+          '</div>';
+      }
+
+      $('results').innerHTML =
+        '<div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5">' +
+          '<h2 class="text-lg font-semibold mb-3">Detected item</h2>' +
+          '<div class="flex flex-wrap gap-2">' + chips.join('') + '</div>' +
+          (d.search_query
+            ? '<p class="text-xs text-gray-500 mt-4">Search query: <span class="font-mono text-gray-300">' +
+              escapeHtml(d.search_query) + '</span></p>'
+            : '') +
+        '</div>' +
+        '<div>' +
+          '<h2 class="text-lg font-semibold mb-3">Find this item</h2>' +
+          '<div class="grid sm:grid-cols-2 gap-3">' + buttons + '</div>' +
+        '</div>' +
+        inlineVinted;
+
+      $('results').classList.remove('hidden');
+      $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    refreshStatus();
+  </script>
+</body>
+</html>

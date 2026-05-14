@@ -1,110 +1,124 @@
-#!/usr/bin/env python3
-"""
-ASI-Evolve command-line entry point.
+"""Clothing Finder — FastAPI app.
 
-Usage:
-    python main.py
-    python main.py --experiment my_exp --steps 20
-    python main.py --config path/to/config.yaml
+Upload a clothing photo, get a structured description from a vision LLM, and
+search links to find the item on Vinted, Google Lens, and Google Shopping.
 """
 
-import argparse
-import importlib.util
-import sys
+from __future__ import annotations
+
+import io
+import os
+import uuid
+from collections import OrderedDict
 from pathlib import Path
 
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
+from PIL import Image
 
-def _bootstrap_package() -> None:
-    """Register the repository root as the importable `Evolve` package."""
-    project_root = Path(__file__).resolve().parent
-    package_name = "Evolve"
+from search import build_links, fetch_vinted_top
+from vision import describe_item
 
-    if package_name in sys.modules:
-        return
+MAX_UPLOAD_BYTES = 8 * 1024 * 1024  # 8 MB
+MAX_IMAGE_DIM = 1024
+IMAGE_STORE_CAP = 32
 
-    spec = importlib.util.spec_from_file_location(
-        package_name,
-        project_root / "__init__.py",
-        submodule_search_locations=[str(project_root)],
+STATIC_DIR = Path(__file__).parent / "static"
+
+app = FastAPI(title="Clothing Finder")
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+# Image store: id -> (jpeg_bytes,). OrderedDict for LRU eviction.
+IMAGE_STORE: "OrderedDict[str, bytes]" = OrderedDict()
+
+
+def _store_image(jpeg_bytes: bytes) -> str:
+    image_id = uuid.uuid4().hex
+    IMAGE_STORE[image_id] = jpeg_bytes
+    while len(IMAGE_STORE) > IMAGE_STORE_CAP:
+        IMAGE_STORE.popitem(last=False)
+    return image_id
+
+
+def _prepare_image(raw: bytes) -> bytes:
+    """Validate, downscale, and re-encode as JPEG."""
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img.load()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Not a valid image: {exc}")
+
+    if img.mode not in ("RGB", "L"):
+        img = img.convert("RGB")
+
+    img.thumbnail((MAX_IMAGE_DIM, MAX_IMAGE_DIM), Image.LANCZOS)
+
+    out = io.BytesIO()
+    img.save(out, format="JPEG", quality=85, optimize=True)
+    return out.getvalue()
+
+
+@app.get("/")
+async def root() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/api/status")
+async def status() -> dict:
+    return {"has_api_key": bool(os.environ.get("GROQ_API_KEY"))}
+
+
+@app.post("/api/analyze")
+async def analyze(request: Request, image: UploadFile = File(...)) -> JSONResponse:
+    if not os.environ.get("GROQ_API_KEY"):
+        raise HTTPException(
+            status_code=503,
+            detail="GROQ_API_KEY is not configured on the server.",
+        )
+
+    raw = await image.read()
+    if len(raw) == 0:
+        raise HTTPException(status_code=400, detail="Empty upload.")
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Image is larger than 8 MB.")
+
+    prepared = _prepare_image(raw)
+    image_id = _store_image(prepared)
+
+    try:
+        description = describe_item(prepared, mime_type="image/jpeg")
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Vision model failed: {exc}")
+
+    base_url = str(request.base_url).rstrip("/")
+    image_public_url = f"{base_url}/api/image/{image_id}"
+    links = build_links(description, image_public_url)
+
+    vinted_items = await fetch_vinted_top(description)
+
+    return JSONResponse(
+        {
+            "image_id": image_id,
+            "image_url": image_public_url,
+            "description": description,
+            "links": links,
+            "vinted_items": vinted_items,
+        }
     )
-    if spec is None or spec.loader is None:
-        raise ImportError("Failed to bootstrap the 'Evolve' package")
-
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[package_name] = module
-    spec.loader.exec_module(module)
 
 
-_bootstrap_package()
-
-from Evolve.pipeline import Pipeline
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Evolve Framework - Automated Experiment Evolution"
+@app.get("/api/image/{image_id}")
+async def get_image(image_id: str) -> Response:
+    data = IMAGE_STORE.get(image_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail="Image not found or expired.")
+    IMAGE_STORE.move_to_end(image_id)
+    return Response(
+        content=data,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=3600"},
     )
-
-    parser.add_argument(
-        "--config",
-        type=str,
-        default=None,
-        help="Path to config file (default: config.yaml)",
-    )
-
-    parser.add_argument(
-        "--experiment",
-        type=str,
-        default=None,
-        help="Experiment name (overrides config)",
-    )
-
-    parser.add_argument(
-        "--steps",
-        type=int,
-        default=10,
-        help="Number of evolution steps (default: 10)",
-    )
-
-    parser.add_argument(
-        "--sample-n",
-        type=int,
-        default=3,
-        help="Number of nodes to sample per step (default: 3)",
-    )
-
-    parser.add_argument(
-        "--eval-script",
-        type=str,
-        default=None,
-        help="Path to evaluation script",
-    )
-
-    args = parser.parse_args()
-
-    pipeline = Pipeline(
-        config_path=args.config,
-        experiment_name=args.experiment,
-    )
-
-    pipeline.run(
-        max_steps=args.steps,
-        eval_script=args.eval_script,
-        sample_n=args.sample_n,
-    )
-
-    stats = pipeline.get_stats()
-    print("\n=== Statistics ===")
-    for key, value in stats.items():
-        print(f"{key}: {value}")
-
-    best = pipeline.get_best_node()
-    if best:
-        print("\n=== Best Node ===")
-        print(f"Name: {best.name}")
-        print(f"Score: {best.score:.4f}")
-        print(f"Motivation: {best.motivation[:200]}...")
-
-
-if __name__ == "__main__":
-    main()
