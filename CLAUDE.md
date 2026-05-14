@@ -1,6 +1,6 @@
 # ASI-Evolve — Getting Started on Your Android Phone
 
-This guide gets you from zero to running ASI-Evolve on your Android browser in about 15 minutes. Everything is free.
+This guide gets you from zero to running ASI-Evolve on your Android browser in about 15 minutes. **Everything is free.**
 
 ---
 
@@ -8,20 +8,20 @@ This guide gets you from zero to running ASI-Evolve on your Android browser in a
 
 | Thing | Cost | Time |
 |---|---|---|
-| Anthropic API key | Free trial (~$5 credit) | 3 min |
+| Groq API key | **Free forever** | 3 min |
 | Railway account | Free tier | 3 min |
 | GitHub account | Free | (you have this) |
 
 ---
 
-## Step 1 — Get an Anthropic API key
+## Step 1 — Get a free Groq API key
 
-1. Open your Android browser and go to **console.anthropic.com**
+1. Open your Android browser and go to **console.groq.com**
 2. Tap **Sign up** and create an account (email + password)
 3. Verify your email
-4. Once logged in, tap **API Keys** in the left sidebar
-5. Tap **Create Key** → give it a name (e.g. "asi-evolve") → **Create**
-6. **Copy the key** — it starts with `sk-ant-...`
+4. Once logged in, tap **API Keys** in the left menu
+5. Tap **Create API Key** → give it a name (e.g. "asi-evolve") → **Submit**
+6. **Copy the key** — it starts with `gsk_...`
    > Keep this key private. Never share it publicly.
 
 ---
@@ -50,8 +50,8 @@ This guide gets you from zero to running ASI-Evolve on your Android browser in a
 2. Tap **Variables** (or **Settings → Variables**)
 3. Tap **New Variable**
 4. Set:
-   - **Name**: `ANTHROPIC_API_KEY`
-   - **Value**: paste your `sk-ant-...` key
+   - **Name**: `GROQ_API_KEY`
+   - **Value**: paste your `gsk_...` key
 5. Tap **Add** — Railway will redeploy automatically
 
 ---
@@ -62,7 +62,7 @@ This guide gets you from zero to running ASI-Evolve on your Android browser in a
 2. Tap **Generate Domain** if no domain is shown yet
 3. Copy the `.railway.app` URL
 4. Open it in your Android browser
-5. You should see a **green dot** next to "API key set" in the top-right corner
+5. You should see a **green dot** next to "Groq key set" in the top-right corner
 
 ---
 
@@ -83,7 +83,7 @@ This guide gets you from zero to running ASI-Evolve on your Android browser in a
 
 - **Runs are saved** — if you stop and restart, it picks up where it left off
 - **More steps = better results** — try 30–50 steps for serious improvement
-- **Cost** — each step calls Claude roughly 3 times. 10 steps ≈ $0.05–0.10 USD at current rates
+- **Cost** — Groq is **completely free** on the free tier. No credit card needed.
 
 ---
 
@@ -91,7 +91,7 @@ This guide gets you from zero to running ASI-Evolve on your Android browser in a
 
 | Problem | Fix |
 |---|---|
-| Red "No API key" dot | Add `ANTHROPIC_API_KEY` in Railway Variables |
+| Red "No API key" dot | Add `GROQ_API_KEY` in Railway Variables |
 | "A run is already in progress" | Tap **■ Stop**, wait a moment, then start again |
 | App not loading | Check Railway → Deployments for build errors |
 | Build fails | Make sure you're deploying from the `claude/new-session-IdFse` branch |

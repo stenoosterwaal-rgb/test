@@ -2,3 +2,10 @@
 *.env
 .evolve_runs/
 .test_tmp/
+
+# ASI-Evolve experiment runtime data
+experiments/*/database_data/
+experiments/*/cognition_data/
+experiments/*/steps/
+experiments/*/logs/
+experiments/*/pipeline_state.json

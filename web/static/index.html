@@ -45,6 +45,19 @@
       </p>
     </section>
 
+    <!-- ── No-key setup hint ─────────────────────────────── -->
+    <section id="setup-hint" class="hidden bg-indigo-950 rounded-2xl p-5 border border-indigo-800 text-sm">
+      <p class="font-semibold text-indigo-300 mb-2">⚙️ Setup required — add your free Groq API key</p>
+      <ol class="list-decimal list-inside space-y-1 text-gray-300">
+        <li>Open <strong>console.groq.com</strong> in your browser and sign up (free)</li>
+        <li>Go to <strong>API Keys → Create API Key</strong></li>
+        <li>Copy the key (starts with <code class="font-mono text-indigo-300">gsk_…</code>)</li>
+        <li>In Railway → your service → <strong>Variables</strong>, add:<br>
+            <code class="font-mono text-indigo-300">GROQ_API_KEY = gsk_…</code></li>
+        <li>Railway redeploys automatically — refresh this page</li>
+      </ol>
+    </section>
+
     <!-- ── Control panel ──────────────────────────────────── -->
     <section class="bg-gray-900 rounded-2xl p-5 border border-gray-800 space-y-4">
       <div class="flex items-center justify-between">
@@ -137,7 +150,7 @@
 
     <!-- ── Footer ─────────────────────────────────────────── -->
     <footer class="text-center text-xs text-gray-700 pb-6">
-      ASI-Evolve &bull; Claude-powered &bull;
+      ASI-Evolve &bull; Powered by Groq (free) &bull;
       <a href="https://github.com/stenoosterwaal-rgb/test" class="hover:text-gray-500">GitHub</a>
     </footer>
 
@@ -162,14 +175,17 @@
         // API key indicator
         const dot = document.getElementById('key-dot');
         const label = document.getElementById('key-label');
+        const hint = document.getElementById('setup-hint');
         if (d.api_key_set) {
           dot.className = 'w-2.5 h-2.5 rounded-full bg-green-500';
-          label.textContent = 'API key set';
+          label.textContent = 'Groq key set';
           label.className = 'text-xs text-green-400';
+          hint.classList.add('hidden');
         } else {
           dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500';
           label.textContent = 'No API key';
           label.className = 'text-xs text-red-400';
+          hint.classList.remove('hidden');
         }
 
         // Running indicator

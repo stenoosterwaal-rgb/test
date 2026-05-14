@@ -157,7 +157,7 @@ async def index():
 
 @app.get("/api/status")
 async def status():
-    api_key_set = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    api_key_set = bool(os.environ.get("GROQ_API_KEY"))
     return {
         "api_key_set": api_key_set,
         "running": run_state.running,
@@ -171,9 +171,9 @@ async def start_run(payload: Optional[Dict[str, Any]] = None):
     if run_state.running:
         return JSONResponse({"error": "A run is already in progress."}, status_code=409)
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
+    if not os.environ.get("GROQ_API_KEY"):
         return JSONResponse(
-            {"error": "ANTHROPIC_API_KEY is not set. Add it in your Railway environment variables."},
+            {"error": "GROQ_API_KEY is not set. Get a free key at console.groq.com, then add it in Railway → Variables."},
             status_code=400,
         )
 
